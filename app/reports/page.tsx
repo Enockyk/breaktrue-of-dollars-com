@@ -2,30 +2,36 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useDigitsTrading } from '../../hooks/use-digits-trading';
+import { Localize } from '@deriv-com/translations';
+import { useRiseFallTrading } from '../../hooks/use-rise-fall-trading';
 import { useDerivWSContext } from '@/components/custom/deriv-ws-provider';
 import { useLogoSrc } from '@/components/custom/logo-src-provider';
+import { useAppTranslations } from '@/components/custom/i18n-provider';
 import { Header } from '@/components/custom/header';
 import { ThemeToggle } from '@/components/custom/theme-toggle';
 import { Footer } from '@/components/custom/footer';
 import Link from 'next/link';
 import { PositionsTable } from '@/components/custom/positions-table';
 
-const DIGIT_CONTRACT_LABELS: Record<string, string> = {
-  DIGITMATCH: 'Digit Match',
-  DIGITDIFF: 'Digit Differs',
-  DIGITOVER: 'Digit Over',
-  DIGITUNDER: 'Digit Under',
-  DIGITEVEN: 'Digit Even',
-  DIGITODD: 'Digit Odd',
-};
+function getRiseFallContractLabels(
+  localize: (text: string, values?: Record<string, unknown>) => string
+): Record<string, string> {
+  return {
+    CALL: localize('Rise'),
+    PUT: localize('Fall'),
+    CALLE: localize('Rise (Equal)'),
+    PUTE: localize('Fall (Equal)'),
+  };
+}
 
 export default function ReportsPage() {
   const logoSrc = useLogoSrc();
   const router = useRouter();
+  const { localize } = useAppTranslations();
+  const contractTypeLabels = getRiseFallContractLabels(localize);
   const { ws, isConnected, isExhausted, auth } = useDerivWSContext();
   const { authState, accounts, activeAccount, login, signUp, logout, switchAccount } = auth;
-  const trading = useDigitsTrading({ ws, isConnected, isExhausted, isAuthenticated: !!auth.wsUrl, onAuthWSFailed: logout });
+  const trading = useRiseFallTrading({ ws, isConnected, isExhausted, isAuthenticated: !!auth.wsUrl, onAuthWSFailed: logout });
 
   useEffect(() => {
     if (authState === 'unauthenticated' || authState === 'error') {
@@ -41,6 +47,7 @@ export default function ReportsPage() {
     );
   }
 
+
   return (
     <main className="flex flex-col bg-background max-lg:h-dvh max-lg:overflow-y-auto lg:min-h-dvh">
       <Header
@@ -55,22 +62,19 @@ export default function ReportsPage() {
         actions={<ThemeToggle />}
       />
 
-      {/* Spacer to push content below fixed header — authenticated users have a taller header */}
-      <div className="h-[76px] shrink-0" />
-
       <div className="flex-1 w-full max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 pb-14">
         <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-4">
           <span className="text-base leading-none">←</span>
-          <span>Back</span>
+          <span><Localize i18n_default_text="Back" /></span>
         </Link>
         <PositionsTable
-          openPositions={trading.openPositions.filter(p => Object.keys(DIGIT_CONTRACT_LABELS).includes(p.contract_type))}
-          closedPositions={trading.closedPositions.filter(p => Object.keys(DIGIT_CONTRACT_LABELS).includes(p.contract_type))}
+          openPositions={trading.openPositions.filter(p => Object.keys(contractTypeLabels).includes(p.contract_type))}
+          closedPositions={trading.closedPositions.filter(p => Object.keys(contractTypeLabels).includes(p.contract_type))}
           onSell={trading.sellContract}
           sellingId={trading.sellingId}
           sellError={trading.sellError}
           onClearSellError={trading.clearSellError}
-          contractTypeLabels={DIGIT_CONTRACT_LABELS}
+          contractTypeLabels={contractTypeLabels}
           className="mt-0"
         />
       </div>
